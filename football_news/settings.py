@@ -33,13 +33,11 @@ PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
-...
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "herdayani-elision-footballnews.pbp.cs.ui.ac.id"]
-...
-...
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-...
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "herdayani-elision-footballnews.pbp.cs.ui.ac.id",
+]
 
 # Application definition
 
