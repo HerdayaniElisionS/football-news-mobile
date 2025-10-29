@@ -32,7 +32,6 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
             .copyWith(secondary: Colors.blueAccent[400]),
-        useMaterial3: false,
       ),
       home: MyHomePage(),
     );
