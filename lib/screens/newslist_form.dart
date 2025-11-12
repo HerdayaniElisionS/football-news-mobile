@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:football_news/widgets/left_drawer.dart'; //for the drawer
+import 'package:football_news/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:football_news/screens/menu.dart';
 
 class NewsFormPage extends StatefulWidget {
   const NewsFormPage({super.key});
@@ -25,15 +29,21 @@ class _NewsFormPageState extends State<NewsFormPage> {
     'analysis',
   ];
 
+  bool _isValidUrl(String v) {
+    if (v.trim().isEmpty) return true; // optional
+    final uri = Uri.tryParse(v.trim());
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Center(
-          child: Text(
-            'Add News Form',
-          ),
-        ),
+        title: const Center(child: Text('Add News Form')),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
       ),
@@ -57,17 +67,18 @@ class _NewsFormPageState extends State<NewsFormPage> {
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _title = value!;
+                      _title = value ?? "";
                     });
                   },
                   validator: (String? value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return "Title cannot be empty!";
                     }
                     return null;
                   },
                 ),
               ),
+
               // === Content ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -82,17 +93,18 @@ class _NewsFormPageState extends State<NewsFormPage> {
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _content = value!;
+                      _content = value ?? "";
                     });
                   },
                   validator: (String? value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return "Content cannot be empty!";
                     }
                     return null;
                   },
                 ),
               ),
+
               // === Category ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -105,21 +117,21 @@ class _NewsFormPageState extends State<NewsFormPage> {
                   ),
                   value: _category,
                   items: _categories
-                      .map(
-                        (cat) => DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat[0].toUpperCase() + cat.substring(1)),
-                        ),
-                      )
+                      .map((cat) => DropdownMenuItem(
+                            value: cat,
+                            child:
+                                Text(cat[0].toUpperCase() + cat.substring(1)),
+                          ))
                       .toList(),
                   onChanged: (String? newValue) {
                     setState(() {
-                      _category = newValue!;
+                      _category = newValue ?? "update";
                     });
                   },
                 ),
               ),
-              // === Thumbnail URL ===
+
+              // === Thumbnail URL (optional) ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: TextFormField(
@@ -132,11 +144,19 @@ class _NewsFormPageState extends State<NewsFormPage> {
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _thumbnail = value!;
+                      _thumbnail = value ?? "";
                     });
+                  },
+                  validator: (String? value) {
+                    if (value == null) return null;
+                    if (!_isValidUrl(value)) {
+                      return "Enter a valid http/https URL or leave it empty.";
+                    }
+                    return null;
                   },
                 ),
               ),
+
               // === Is Featured ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -150,6 +170,7 @@ class _NewsFormPageState extends State<NewsFormPage> {
                   },
                 ),
               ),
+
               // === Save Button ===
               Align(
                 alignment: Alignment.bottomCenter,
@@ -160,39 +181,40 @@ class _NewsFormPageState extends State<NewsFormPage> {
                       backgroundColor:
                           MaterialStateProperty.all(Colors.indigo),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title:
-                                  const Text('Produk berhasil tersimpan'),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Title: $_title'),
-                                    Text('Content: $_content'),
-                                    Text('Category: $_category'),
-                                    Text('Thumbnail: ${_thumbnail.isEmpty ? "-" : _thumbnail}'),
-                                    Text('Featured: ${_isFeatured ? "Ya" : "Tidak"}'),
-                                  ],
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  child: const Text('OK'),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                              ],
-                            );
-                          },
+                        // To connect Android emulator with Django on localhost, use URL http://10.0.2.2/
+                        // If you using chrome,  use URL http://localhost:8000
+                        
+                        final response = await request.postJson(
+                          "http://localhost:8000/create-flutter/",
+                          jsonEncode({
+                            "title": _title,
+                            "content": _content,
+                            "thumbnail": _thumbnail,
+                            "category": _category,
+                            "is_featured": _isFeatured,
+                          }),
                         );
-                        _formKey.currentState!.reset();
+                        if (context.mounted) {
+                          if (response['status'] == 'success') {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content: Text("News successfully saved!"),
+                            ));
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => MyHomePage()),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content: Text(
+                                  "Something went wrong, please try again."),
+                            ));
+                          }
+                        }
                       }
                     },
                     child: const Text(
